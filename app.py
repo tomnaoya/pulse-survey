@@ -10,16 +10,15 @@ import email_sender as mailer
 # ─────────────────────────────
 # Flask 初期化（最初！）
 # ─────────────────────────────
-app = Flask(
-    __name__,
-    static_folder=None  # ← これが超重要
-)
+app = Flask(__name__, static_folder=None)
 app.config["JSON_AS_ASCII"] = False
 
-# ─────────────────────────────
-# API（Reactより先に定義）
-# ─────────────────────────────
+# React build のパス
+REACT_BUILD_DIR = os.path.join(os.getcwd(), "frontend", "build")
 
+# ─────────────────────────────
+# ヘルスチェック
+# ─────────────────────────────
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({
@@ -28,6 +27,9 @@ def health():
         "time": datetime.now().isoformat()
     })
 
+# ─────────────────────────────
+# API（Reactより先に定義）
+# ─────────────────────────────
 
 @app.route("/api/survey/submit", methods=["POST"])
 def submit_survey():
@@ -60,32 +62,30 @@ def validate_survey_token(token):
         "deadline": info["deadline"],
     })
 
-
-# （他の /api/... ルートもここに並べる）
+# ─────────────────────────────
+# React 配信（ここが重要）
 # ─────────────────────────────
 
+# ① トップページ（/）
+@app.route("/")
+def index():
+    return send_from_directory(REACT_BUILD_DIR, "index.html")
 
-# ─────────────────────────────
-# React build 配信（最後！）
-# ─────────────────────────────
-
-REACT_BUILD_DIR = os.path.join(os.getcwd(), "frontend", "build")
-
+# ② React の static ファイル
 @app.route("/static/<path:filename>")
-def serve_static(filename):
+def react_static(filename):
     return send_from_directory(
         os.path.join(REACT_BUILD_DIR, "static"),
         filename
     )
 
-@app.route("/", defaults={"path": ""})
+# ③ React Router 用 catch-all
 @app.route("/<path:path>")
-def serve_react(path):
-    if path != "" and os.path.exists(os.path.join(REACT_BUILD_DIR, path)):
+def react_catch_all(path):
+    file_path = os.path.join(REACT_BUILD_DIR, path)
+    if os.path.exists(file_path):
         return send_from_directory(REACT_BUILD_DIR, path)
-    else:
-        return send_from_directory(REACT_BUILD_DIR, "index.html")
-
+    return send_from_directory(REACT_BUILD_DIR, "index.html")
 
 # ─────────────────────────────
 # 起動
