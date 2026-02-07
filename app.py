@@ -25,10 +25,30 @@ REACT_BUILD_DIR = os.path.join(BASE_DIR, "frontend", "build")
 # ============================================================
 @app.route("/health", methods=["GET"])
 def health():
+    db_path = config.DATABASE_PATH
+    db_exists = os.path.exists(db_path)
+    db_size = os.path.getsize(db_path) if db_exists else 0
+    survey_count = 0
+    employee_count = 0
+    token_count = 0
+    try:
+        with db.get_db() as conn:
+            survey_count = conn.execute("SELECT COUNT(*) as c FROM surveys").fetchone()["c"]
+            employee_count = conn.execute("SELECT COUNT(*) as c FROM employees").fetchone()["c"]
+            token_count = conn.execute("SELECT COUNT(*) as c FROM survey_tokens").fetchone()["c"]
+    except Exception as e:
+        pass
     return jsonify({
         "status": "ok",
         "app": config.APP_NAME,
-        "time": datetime.now().isoformat()
+        "time": datetime.now().isoformat(),
+        "db_path": db_path,
+        "db_exists": db_exists,
+        "db_size_bytes": db_size,
+        "surveys": survey_count,
+        "employees": employee_count,
+        "tokens": token_count,
+        "cwd": os.getcwd(),
     })
 
 # ============================================================
