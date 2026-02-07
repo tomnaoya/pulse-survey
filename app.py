@@ -20,6 +20,46 @@ db.init_db()
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 REACT_BUILD_DIR = os.path.join(BASE_DIR, "frontend", "build")
 
+# ★ 永続DBが空の場合、同梱の survey.db からデータをコピー
+def _seed_persistent_db():
+    """永続DB（/var/data/survey.db 等）が空なら、リポジトリ同梱のDBからデータを移行"""
+    bundled_db = os.path.join(BASE_DIR, "survey.db")
+    if bundled_db == config.DATABASE_PATH:
+        return  # 同じファイルなら何もしない（ローカル開発時）
+    if not os.path.exists(bundled_db):
+        return  # 同梱DBが無い場合はスキップ
+
+    with db.get_db() as conn:
+        count = conn.execute("SELECT COUNT(*) as c FROM employees").fetchone()["c"]
+        if count > 0:
+            return  # 既にデータがあるならスキップ
+
+    # 同梱DBからデータをコピー
+    import sqlite3
+    print("[SEED] 永続DBが空のため、同梱DBからデータを移行します...")
+    src = sqlite3.connect(bundled_db)
+    src.row_factory = sqlite3.Row
+    with db.get_db() as conn:
+        for row in src.execute("SELECT * FROM employees").fetchall():
+            conn.execute(
+                "INSERT OR IGNORE INTO employees (id, name, email, department, join_year, is_active) VALUES (?,?,?,?,?,?)",
+                (row["id"], row["name"], row["email"], row["department"], row["join_year"], row["is_active"]),
+            )
+        for row in src.execute("SELECT * FROM surveys").fetchall():
+            conn.execute(
+                "INSERT OR IGNORE INTO surveys (id, year_month, title, start_date, deadline, extra_question_title, extra_question_description, status) VALUES (?,?,?,?,?,?,?,?)",
+                (row["id"], row["year_month"], row["title"], row["start_date"], row["deadline"], row["extra_question_title"], row["extra_question_description"], row["status"]),
+            )
+        for row in src.execute("SELECT * FROM survey_tokens").fetchall():
+            conn.execute(
+                "INSERT OR IGNORE INTO survey_tokens (id, survey_id, employee_id, token, is_used, sent_at, reminded_at, expires_at) VALUES (?,?,?,?,?,?,?,?)",
+                (row["id"], row["survey_id"], row["employee_id"], row["token"], row["is_used"], row["sent_at"], row["reminded_at"], row["expires_at"]),
+            )
+    src.close()
+    print("[SEED] データ移行完了")
+
+_seed_persistent_db()
+
 # ============================================================
 # ヘルスチェック
 # ============================================================
