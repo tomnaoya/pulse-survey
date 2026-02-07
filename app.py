@@ -13,6 +13,9 @@ import email_sender as mailer
 app = Flask(__name__, static_folder=None)
 app.config["JSON_AS_ASCII"] = False
 
+# ★ gunicorn 起動でも必ず実行される
+db.init_db()
+
 # このファイル自身の場所を基準にする（Render対策）
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 REACT_BUILD_DIR = os.path.join(BASE_DIR, "frontend", "build")
