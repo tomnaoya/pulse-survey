@@ -9,7 +9,8 @@ SECRET_KEY = os.environ.get("SURVEY_SECRET_KEY", "your-secret-key-change-in-prod
 BASE_URL = os.environ.get("SURVEY_BASE_URL", "http://localhost:5000")
 
 # ─── データベース ──────────────────────────────
-DATABASE_PATH = os.environ.get("SURVEY_DB_PATH", "survey.db")
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATABASE_PATH = os.environ.get("SURVEY_DB_PATH", os.path.join(_BASE_DIR, "survey.db"))
 
 # ─── メール設定 ─────────────────────────────────
 SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
