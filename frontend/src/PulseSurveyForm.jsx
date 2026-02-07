@@ -8,6 +8,8 @@ const WEATHER_OPTIONS = [
   { value: 1, icon: "⛈️", label: "とても悪い", bg: "#fef2f2", border: "#fca5a5", activeBg: "#dc2626", activeText: "#fff" },
 ];
 
+const token = window.location.pathname.split("/").pop();
+
 const QUESTIONS = [
   {
     key: "work",
@@ -31,6 +33,35 @@ const QUESTIONS = [
     icon: "💪",
   },
 ];
+
+const submitSurvey = async () => {
+  try {
+    const res = await fetch("/api/survey/submit", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        token: token,
+        work_satisfaction: answers.work,
+        relationships: answers.relationship,
+        health: answers.health,
+        comment: comment,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (data.status === "success") {
+      transition(() => setStep("done"));
+    } else {
+      alert("送信に失敗しました");
+    }
+  } catch (e) {
+    alert("通信エラーが発生しました");
+  }
+};
+
 
 export default function SurveyPage() {
   const [step, setStep] = useState("intro"); // intro | survey | confirm | done
@@ -256,7 +287,7 @@ export default function SurveyPage() {
                   ← 質問に戻る
                 </button>
                 <div style={{ flex: 1 }} />
-                <button onClick={() => transition(() => setStep("done"))} style={styles.submitBtn}>
+                <button onClick={submitSurvey} style={styles.submitBtn}>
                   回答を送信する ✓
                 </button>
               </div>
@@ -297,20 +328,6 @@ export default function SurveyPage() {
                 来月のサーベイは3月上旬にお届けします。<br />
                 何かお困りのことがあれば、いつでも人事部までご相談ください。
               </p>
-
-              <button
-                onClick={() => {
-                  transition(() => {
-                    setStep("intro");
-                    setAnswers({ work: null, relationship: null, health: null });
-                    setComment("");
-                    setCurrentQ(0);
-                  });
-                }}
-                style={styles.resetBtn}
-              >
-                デモ: もう一度回答する
-              </button>
             </div>
           )}
         </main>
