@@ -34,35 +34,6 @@ const QUESTIONS = [
   },
 ];
 
-const submitSurvey = async () => {
-  try {
-    const res = await fetch("/api/survey/submit", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        token: token,
-        work_satisfaction: answers.work,
-        relationships: answers.relationship,
-        health: answers.health,
-        comment: comment,
-      }),
-    });
-
-    const data = await res.json();
-
-    if (data.status === "success") {
-      transition(() => setStep("done"));
-    } else {
-      alert("送信に失敗しました");
-    }
-  } catch (e) {
-    alert("通信エラーが発生しました");
-  }
-};
-
-
 export default function SurveyPage() {
   const [step, setStep] = useState("intro"); // intro | survey | confirm | done
   const [answers, setAnswers] = useState({ work: null, relationship: null, health: null });
@@ -87,6 +58,34 @@ export default function SurveyPage() {
       setTimeout(() => transition(() => setCurrentQ(currentQ + 1)), 350);
     } else {
       setTimeout(() => transition(() => setStep("comment")), 350);
+    }
+  };
+
+  const submitSurvey = async () => {
+    try {
+      const res = await fetch("/api/survey/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token: token,
+          work_satisfaction: answers.work,
+          relationships: answers.relationship,
+          health: answers.health,
+          comment: comment,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.status === "success") {
+        transition(() => setStep("done"));
+      } else {
+        alert("送信に失敗しました: " + (data.error || ""));
+      }
+    } catch (e) {
+      alert("通信エラーが発生しました");
     }
   };
 
@@ -517,10 +516,6 @@ const styles = {
   },
   doneSummaryRow: { display: "flex", alignItems: "center", gap: 10 },
   doneFooter: { fontSize: 13, color: "#94a3b8", lineHeight: 1.7, marginBottom: 16 },
-  resetBtn: {
-    padding: "10px 20px", fontSize: 13, fontWeight: 500, color: "#6366f1",
-    background: "#eef2ff", border: "none", borderRadius: 10,
-  },
 
   // Footer
   footer: { padding: "16px 0 20px", textAlign: "center" },
