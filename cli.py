@@ -77,6 +77,40 @@ def cmd_prepare(args):
         print(f"  ... 他 {result['total'] - 5}名")
 
 
+def cmd_export_urls(args):
+    """個人別回答URLをCSV出力（メール送信用）"""
+    survey = db.get_survey(args.survey_id)
+    if not survey:
+        print(f"❌ サーベイID {args.survey_id} が見つかりません")
+        return
+
+    with db.get_db() as conn:
+        rows = conn.execute(
+            """SELECT t.token, e.name, e.email, e.department
+               FROM survey_tokens t
+               JOIN employees e ON t.employee_id = e.id
+               WHERE t.survey_id = ?
+               ORDER BY e.department, e.name""",
+            (args.survey_id,),
+        ).fetchall()
+
+    if not rows:
+        print("❌ トークンが見つかりません。先に prepare コマンドを実行してください")
+        return
+
+    output = args.output or f"survey_{args.survey_id}_urls.csv"
+    with open(output, "w", encoding="utf-8-sig", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["名前", "メールアドレス", "部門", "回答URL"])
+        for row in rows:
+            url = sm.build_survey_url(row["token"])
+            writer.writerow([row["name"], row["email"], row["department"], url])
+
+    print(f"✅ {len(rows)}名分のURLを {output} に出力しました")
+    print(f"   サーベイ: {survey['title']}")
+    print(f"   締切: {survey['deadline']}")
+
+
 def cmd_send(args):
     """案内メールを送信"""
     result = mailer.send_survey_invites(args.survey_id)
@@ -186,14 +220,13 @@ def main():
   # 従業員CSVインポート
   python cli.py import-employees employees.csv
 
-  # サーベイ作成 → 配信準備 → 送信
+  # サーベイ作成 → 配信準備 → URL出力
   python cli.py create-survey --month 2026-03 --start 2026-03-01 --deadline 2026-03-14
   python cli.py prepare --survey-id 1
-  python cli.py send --survey-id 1
+  python cli.py export-urls --survey-id 1 --output urls.csv
 
-  # 進捗確認・リマインド
+  # 進捗確認
   python cli.py progress --survey-id 1
-  python cli.py remind --survey-id 1
 
   # アラート確認・CSV出力
   python cli.py alerts --survey-id 1
@@ -224,6 +257,11 @@ def main():
     # prepare
     p = sub.add_parser("prepare", help="配信準備（トークン生成）")
     p.add_argument("--survey-id", type=int, required=True)
+
+    # export-urls ★新規追加
+    p = sub.add_parser("export-urls", help="個人別回答URLをCSV出力（メール送信用）")
+    p.add_argument("--survey-id", type=int, required=True)
+    p.add_argument("--output", help="出力ファイル名（省略時: survey_<id>_urls.csv）")
 
     # send
     p = sub.add_parser("send", help="案内メールを送信")
@@ -262,6 +300,7 @@ def main():
         "list-employees": cmd_list_employees,
         "create-survey": cmd_create_survey,
         "prepare": cmd_prepare,
+        "export-urls": cmd_export_urls,
         "send": cmd_send,
         "remind": cmd_remind,
         "progress": cmd_progress,
