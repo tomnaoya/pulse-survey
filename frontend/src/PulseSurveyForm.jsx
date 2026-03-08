@@ -106,7 +106,7 @@ export default function SurveyPage() {
             <div style={styles.logo}>G</div>
             <div>
               <div style={styles.logoTitle}>パルスサーベイ</div>
-              <div style={styles.logoSub}>2026年2月度</div>
+              <div style={styles.logoSub}>2026年3月度</div>
             </div>
           </div>
           {step === "survey" && (
@@ -142,7 +142,6 @@ export default function SurveyPage() {
                 回答をはじめる
                 <span style={{ marginLeft: 8 }}>→</span>
               </button>
-              <p style={styles.deadline}>回答期限：2026年2月14日（土）</p>
             </div>
           )}
 
@@ -193,7 +192,7 @@ export default function SurveyPage() {
                           boxShadow: isSelected ? `0 8px 24px ${w.activeBg}44` : "0 2px 8px rgba(0,0,0,0.04)",
                         }}
                       >
-                        <span style={{ fontSize: 36, filter: isSelected ? "none" : "none" }}>{w.icon}</span>
+                        <span style={{ fontSize: 36 }}>{w.icon}</span>
                         <span style={{
                           fontSize: 12, fontWeight: 600, marginTop: 4,
                           color: isSelected ? w.activeText : "#475569",
@@ -324,7 +323,7 @@ export default function SurveyPage() {
               </div>
 
               <p style={styles.doneFooter}>
-                来月のサーベイは3月上旬にお届けします。<br />
+                来月のサーベイは4月上旬にお届けします。<br />
                 何かお困りのことがあれば、いつでも人事部までご相談ください。
               </p>
             </div>
@@ -354,7 +353,7 @@ function TrustItem({ icon, text }) {
   );
 }
 
-// ─── Styles ─────────────────────────────────────────────────
+// ─── Styles ────────────────────────────────────────────────────────────────
 const globalCSS = `
   @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700;800&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -433,7 +432,6 @@ const styles = {
     boxShadow: "0 4px 16px rgba(99,102,241,0.3)",
     transition: "all 0.2s",
   },
-  deadline: { fontSize: 12, color: "#94a3b8", marginTop: 14 },
 
   // Question tabs
   qTabs: { display: "flex", gap: 8, marginBottom: 16 },

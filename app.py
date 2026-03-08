@@ -5,7 +5,6 @@ import os
 import config
 import database as db
 import survey_manager as sm
-import email_sender as mailer
 
 # ============================================================
 # Flask 初期化

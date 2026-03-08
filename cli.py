@@ -10,7 +10,6 @@ from datetime import datetime, timedelta
 
 import database as db
 import survey_manager as sm
-import email_sender as mailer
 import config
 
 
@@ -111,23 +110,6 @@ def cmd_export_urls(args):
     print(f"   締切: {survey['deadline']}")
 
 
-def cmd_send(args):
-    """案内メールを送信"""
-    result = mailer.send_survey_invites(args.survey_id)
-    print(f"\n✅ 案内メール送信完了")
-    print(f"   送信成功: {result['sent']}件")
-    if result["errors"] > 0:
-        print(f"   送信エラー: {result['errors']}件")
-
-
-def cmd_remind(args):
-    """未回答者にリマインドメールを送信"""
-    result = mailer.send_reminders(args.survey_id)
-    print(f"\n✅ リマインド送信完了")
-    print(f"   送信: {result['sent']}件")
-    print(f"   未回答者合計: {result['unreplied_total']}名")
-
-
 def cmd_progress(args):
     """進捗状況を表示"""
     progress = sm.get_survey_progress(args.survey_id)
@@ -221,7 +203,7 @@ def main():
   python cli.py import-employees employees.csv
 
   # サーベイ作成 → 配信準備 → URL出力
-  python cli.py create-survey --month 2026-03 --start 2026-03-01 --deadline 2026-03-14
+  python cli.py create-survey --month 2026-03 --start 2026-03-01 --deadline 2026-03-31
   python cli.py prepare --survey-id 1
   python cli.py export-urls --survey-id 1 --output urls.csv
 
@@ -249,7 +231,7 @@ def main():
     p = sub.add_parser("create-survey", help="新規サーベイを作成")
     p.add_argument("--month", required=True, help="対象月（例: 2026-03）")
     p.add_argument("--start", required=True, help="開始日（例: 2026-03-01）")
-    p.add_argument("--deadline", required=True, help="締切日（例: 2026-03-14）")
+    p.add_argument("--deadline", required=True, help="締切日（例: 2026-03-31）")
     p.add_argument("--title", help="サーベイタイトル（省略時は自動生成）")
     p.add_argument("--extra-title", help="追加質問のタイトル")
     p.add_argument("--extra-desc", help="追加質問の説明")
@@ -258,18 +240,10 @@ def main():
     p = sub.add_parser("prepare", help="配信準備（トークン生成）")
     p.add_argument("--survey-id", type=int, required=True)
 
-    # export-urls ★新規追加
+    # export-urls
     p = sub.add_parser("export-urls", help="個人別回答URLをCSV出力（メール送信用）")
     p.add_argument("--survey-id", type=int, required=True)
     p.add_argument("--output", help="出力ファイル名（省略時: survey_<id>_urls.csv）")
-
-    # send
-    p = sub.add_parser("send", help="案内メールを送信")
-    p.add_argument("--survey-id", type=int, required=True)
-
-    # remind
-    p = sub.add_parser("remind", help="未回答者にリマインドを送信")
-    p.add_argument("--survey-id", type=int, required=True)
 
     # progress
     p = sub.add_parser("progress", help="進捗状況を表示")
@@ -301,8 +275,6 @@ def main():
         "create-survey": cmd_create_survey,
         "prepare": cmd_prepare,
         "export-urls": cmd_export_urls,
-        "send": cmd_send,
-        "remind": cmd_remind,
         "progress": cmd_progress,
         "alerts": cmd_alerts,
         "close": cmd_close,
