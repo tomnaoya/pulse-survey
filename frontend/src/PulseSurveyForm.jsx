@@ -134,7 +134,7 @@ export default function SurveyPage() {
                 所要時間は約1分です。
               </p>
               <div style={styles.trustBadges}>
-                <TrustItem icon="🔒" text="人事担当のみ閲覧" />
+                <TrustItem icon="🔒" text="人事担当およびCUCの担当者のみ閲覧" />
                 <TrustItem icon="🚫" text="評価には影響しません" />
                 <TrustItem icon="⏱️" text="約1分で完了" />
               </div>
@@ -333,7 +333,7 @@ export default function SurveyPage() {
         {/* Footer */}
         <footer style={styles.footer}>
           <div style={{ fontSize: 11, color: "#94a3b8" }}>
-            このサーベイは人事部が管理しています。回答内容は人事担当者のみが閲覧します。
+            このサーベイは人事統括部が管理しています。回答内容は人事担当およびCUCの担当者のみ閲覧します。
           </div>
           <div style={{ fontSize: 11, color: "#cbd5e1", marginTop: 4 }}>
             © 2026 社内パルスサーベイシステム
