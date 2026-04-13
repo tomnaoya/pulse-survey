@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify, send_from_directory
 from datetime import datetime
+from functools import wraps
 import os
+import base64
 
 import config
 import database as db
@@ -12,28 +14,21 @@ import survey_manager as sm
 app = Flask(__name__, static_folder=None)
 app.config["JSON_AS_ASCII"] = False
 
-# ★ gunicorn 起動でも必ず実行される
 db.init_db()
 
-# このファイル自身の場所を基準にする（Render対策）
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 REACT_BUILD_DIR = os.path.join(BASE_DIR, "frontend", "build")
 
-# ★ 永続DBが空の場合、同梱の survey.db からデータをコピー
 def _seed_persistent_db():
-    """永続DB（/var/data/survey.db 等）が空なら、リポジトリ同梱のDBからデータを移行"""
     bundled_db = os.path.join(BASE_DIR, "survey.db")
     if bundled_db == config.DATABASE_PATH:
-        return  # 同じファイルなら何もしない（ローカル開発時）
+        return
     if not os.path.exists(bundled_db):
-        return  # 同梱DBが無い場合はスキップ
-
+        return
     with db.get_db() as conn:
         count = conn.execute("SELECT COUNT(*) as c FROM employees").fetchone()["c"]
         if count > 0:
-            return  # 既にデータがあるならスキップ
-
-    # 同梱DBからデータをコピー
+            return
     import sqlite3
     print("[SEED] 永続DBが空のため、同梱DBからデータを移行します...")
     src = sqlite3.connect(bundled_db)
@@ -58,6 +53,28 @@ def _seed_persistent_db():
     print("[SEED] データ移行完了")
 
 _seed_persistent_db()
+
+# ============================================================
+# Basic認証（管理者向けAPIの保護）
+# ============================================================
+ADMIN_USER = os.environ.get("ADMIN_USER", "admin")
+ADMIN_PASS = os.environ.get("ADMIN_PASS", "changeme")
+
+def require_admin_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Basic "):
+            return jsonify({"error": "認証が必要です"}), 401, {"WWW-Authenticate": 'Basic realm="Admin"'}
+        try:
+            decoded = base64.b64decode(auth_header[6:]).decode("utf-8")
+            user, password = decoded.split(":", 1)
+            if user != ADMIN_USER or password != ADMIN_PASS:
+                raise ValueError
+        except Exception:
+            return jsonify({"error": "認証に失敗しました"}), 401, {"WWW-Authenticate": 'Basic realm="Admin"'}
+        return f(*args, **kwargs)
+    return decorated
 
 # ============================================================
 # ヘルスチェック
@@ -91,14 +108,13 @@ def health():
     })
 
 # ============================================================
-# 回答者向け API
+# 回答者向け API（認証不要）
 # ============================================================
 @app.route("/api/survey/submit", methods=["POST"])
 def submit_survey():
     data = request.get_json()
     if not data or "token" not in data:
         return jsonify({"error": "トークンが必要です"}), 400
-
     try:
         result = sm.submit_response(
             token=data["token"],
@@ -109,21 +125,15 @@ def submit_survey():
             comment=data.get("comment", ""),
             interview_request=data.get("interview_request"),
         )
-        return jsonify({
-            "status": "success",
-            "message": "回答ありがとうございました",
-            **result
-        })
+        return jsonify({"status": "success", "message": "回答ありがとうございました", **result})
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
-
 
 @app.route("/api/survey/validate/<token>", methods=["GET"])
 def validate_survey_token(token):
     info = sm.validate_token(token)
     if not info:
         return jsonify({"valid": False}), 400
-
     return jsonify({
         "valid": True,
         "employee_name": info["emp_name"],
@@ -132,67 +142,50 @@ def validate_survey_token(token):
     })
 
 # ============================================================
-# 管理者向け API
+# 管理者向け API（Basic認証必須）
 # ============================================================
-
-# サーベイ一覧
 @app.route("/api/admin/surveys", methods=["GET"])
+@require_admin_auth
 def list_surveys():
     with db.get_db() as conn:
-        rows = conn.execute(
-            "SELECT * FROM surveys ORDER BY year_month DESC"
-        ).fetchall()
+        rows = conn.execute("SELECT * FROM surveys ORDER BY year_month DESC").fetchall()
         return jsonify([dict(r) for r in rows])
 
-# トークン生成（本番用）
 @app.route("/api/admin/surveys/<int:survey_id>/prepare", methods=["POST"])
+@require_admin_auth
 def prepare_survey(survey_id):
     try:
         result = sm.prepare_survey(survey_id)
-        return jsonify({
-            "status": "success",
-            "total": result["total"],
-            "sample_urls": [t["url"] for t in result["tokens"][:5]]
-        })
+        return jsonify({"status": "success", "total": result["total"], "sample_urls": [t["url"] for t in result["tokens"][:5]]})
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
 
-# 回答一覧
 @app.route("/api/admin/surveys/<int:survey_id>/responses", methods=["GET"])
+@require_admin_auth
 def survey_responses(survey_id):
-    responses = db.get_responses(survey_id)
-    return jsonify(responses)
+    return jsonify(db.get_responses(survey_id))
 
-# 集計
 @app.route("/api/admin/surveys/<int:survey_id>/stats", methods=["GET"])
+@require_admin_auth
 def survey_stats(survey_id):
-    stats = db.get_survey_stats(survey_id)
-    return jsonify(stats)
+    return jsonify(db.get_survey_stats(survey_id))
 
-# 進捗
 @app.route("/api/admin/surveys/<int:survey_id>/progress", methods=["GET"])
+@require_admin_auth
 def survey_progress(survey_id):
-    progress = sm.get_survey_progress(survey_id)
-    return jsonify(progress)
+    return jsonify(sm.get_survey_progress(survey_id))
 
 # ============================================================
 # React SPA 配信
 # ============================================================
-
-# ① トップページ
 @app.route("/")
 def index():
     return send_from_directory(REACT_BUILD_DIR, "index.html")
 
-# ② static ファイル
 @app.route("/static/<path:filename>")
 def react_static(filename):
-    return send_from_directory(
-        os.path.join(REACT_BUILD_DIR, "static"),
-        filename
-    )
+    return send_from_directory(os.path.join(REACT_BUILD_DIR, "static"), filename)
 
-# ③ React Router 対応（/survey/<token> など）
 @app.route("/<path:path>")
 def react_catch_all(path):
     file_path = os.path.join(REACT_BUILD_DIR, path)
