@@ -81,6 +81,7 @@ def init_db():
                 health REAL NOT NULL CHECK(health BETWEEN 1 AND 5),
                 extra_answer REAL,
                 comment TEXT DEFAULT '',
+                interview_request TEXT DEFAULT NULL,
                 submitted_at TEXT DEFAULT (datetime('now', 'localtime')),
                 FOREIGN KEY (survey_id) REFERENCES surveys(id),
                 FOREIGN KEY (employee_id) REFERENCES employees(id),
@@ -280,13 +281,16 @@ def get_unreplied_tokens(survey_id: int) -> list[dict]:
 
 def save_response(survey_id: int, employee_id: int, token_id: int,
                   work: float, relationships: float, health: float,
-                  extra: float = None, comment: str = "") -> int:
+                  extra: float = None, comment: str = "",
+                  interview_request: str = None) -> int:
     with get_db() as conn:
         cursor = conn.execute(
             """INSERT INTO responses
-               (survey_id, employee_id, token_id, work_satisfaction, relationships, health, extra_answer, comment)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            (survey_id, employee_id, token_id, work, relationships, health, extra, comment),
+               (survey_id, employee_id, token_id, work_satisfaction, relationships, health,
+                extra_answer, comment, interview_request)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (survey_id, employee_id, token_id, work, relationships, health,
+             extra, comment, interview_request),
         )
         conn.execute(
             "UPDATE survey_tokens SET is_used = 1 WHERE id = ?",
@@ -373,6 +377,12 @@ def get_survey_stats(survey_id: int) -> dict:
             (survey_id,),
         ).fetchall()
 
+        # 面談希望者数
+        interview_count = conn.execute(
+            "SELECT COUNT(*) as cnt FROM responses WHERE survey_id = ? AND interview_request = 'yes'",
+            (survey_id,),
+        ).fetchone()["cnt"]
+
         return {
             "total_sent": total,
             "total_responded": responded,
@@ -383,6 +393,7 @@ def get_survey_stats(survey_id: int) -> dict:
             "alert_count": len(alerts),
             "alerts": [dict(a) for a in alerts],
             "department_stats": [dict(d) for d in dept_stats],
+            "interview_request_count": interview_count,
         }
 
 

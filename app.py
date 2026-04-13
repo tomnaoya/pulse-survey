@@ -107,6 +107,7 @@ def submit_survey():
             health=float(data["health"]),
             extra=float(data["extra_answer"]) if data.get("extra_answer") else None,
             comment=data.get("comment", ""),
+            interview_request=data.get("interview_request"),
         )
         return jsonify({
             "status": "success",

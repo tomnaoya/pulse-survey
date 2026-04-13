@@ -90,7 +90,8 @@ def validate_token(token: str) -> dict | None:
 
 
 def submit_response(token: str, work: float, relationships: float,
-                    health: float, extra: float = None, comment: str = "") -> dict:
+                    health: float, extra: float = None, comment: str = "",
+                    interview_request: str = None) -> dict:
     """
     サーベイ回答を送信
     トークン検証 → 回答保存 → 結果返却
@@ -113,6 +114,7 @@ def submit_response(token: str, work: float, relationships: float,
         health=health,
         extra=extra,
         comment=comment,
+        interview_request=interview_request,
     )
 
     return {
